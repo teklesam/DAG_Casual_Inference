@@ -1,0 +1,99 @@
+---
+title: "DAG_GLP"
+author: "Sam"
+date: "2026-05-18"
+output: html_document
+---
+
+```{r}
+library(dagitty)
+library(ggdag)
+library(ggplot2)
+
+# 1. Define DAG with time-varying confounders as L1, L2
+dag <- dagitty('dag {
+  V [pos="-2,2"]
+  U [pos="2,-2"]
+  
+  A0 [pos="0,0", exposure="true"]
+  L1 [pos="1,1"]
+  A1 [pos="2,0"]
+  L2 [pos="3,1"]
+  A2 [pos="4,0"]
+  Y [pos="6,0", outcome="true"]
+
+  V -> A0
+  V -> L1
+  V -> A1
+  V -> L2
+  V -> A2
+  V -> Y
+
+  U -> L1
+  U -> L2
+  U -> Y
+
+  A0 -> L1
+  A0 -> A1
+  A0 -> Y
+  
+  L1 -> A1
+  L1 -> L2
+  L1 -> Y
+  
+  A1 -> L2
+  A1 -> A2
+  A1 -> Y
+  
+  L2 -> A2
+  L2 -> Y
+  
+  A2 -> Y
+}')
+
+# 2. Tidy graph
+tidy_dag <- tidy_dagitty(dag)
+
+# 3. Node colors (professional, role‑based)
+node_colors <- c(
+  "V"  = "#2E8B57",  # baseline confounders (green)
+  "U"  = "#D95F02",  # unmeasured (orange)
+  "A0" = "#1E88E5",  # treatments (blue)
+  "L1" = "#6A51A3",  # time‑varying confounders (purple)
+  "A1" = "#1E88E5",
+  "L2" = "#6A51A3",
+  "A2" = "#1E88E5",
+  "Y"  = "#D32F2F"   # outcome (red)
+)
+
+# 4. Create plot
+p <- ggplot(tidy_dag, aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_dag_edges_link(
+    edge_colour = "grey40",
+    edge_width = 0.7,
+    arrow_directed = grid::arrow(length = grid::unit(6, "pt"), type = "closed")
+  ) +
+  geom_dag_node(aes(color = name), size = 22) +
+  geom_dag_text(aes(label = name), size = 5.5, family = "sans", fontface = "bold") +
+  scale_color_manual(values = node_colors, guide = "none") +
+  theme_dag() +
+  labs(
+    title = "Time-Varying Confounding with Treatment-Confounder Feedback",
+    subtitle = "Longitudinal DAG motivating marginal structural models",
+    caption = "V: baseline confounders | U: unmeasured confounder | A0–A2: treatments at months 0,1,2\nL1–L2: time-varying confounders | Y: psychiatric outcome"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 15, hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, margin = margin(b = 8)),
+    plot.caption = element_text(size = 8, hjust = 0.5, face = "italic"),
+    panel.background = element_rect(fill = "white", colour = NA),
+    plot.background = element_rect(fill = "white", colour = NA)
+  )
+
+# 5. Export as high-resolution PNG and PDF
+ggsave("dag_Lt_timevarying.png", plot = p, width = 10, height = 6, dpi = 300, bg = "white")
+ggsave("dag_Lt_timevarying.pdf", plot = p, width = 10, height = 6, bg = "white")
+
+print(p)
+```
+
